@@ -1,22 +1,37 @@
 // src/app/api/appointments/route.ts
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "../../../lib/mongodb";
+import { WithId, Document } from "mongodb";
+
+interface Appointment {
+  patient_name: string;
+  patient_email: string;
+  issues: string;
+  preferred_time: string;
+  priority: "High" | "Medium" | "Low";
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  doctor_approved: boolean;
+  google_meet_link: string | null;
+}
 
 export async function GET() {
   try {
     const { db } = await connectToDatabase();
 
     const appointments = await db
-      .collection("patients_appointments")
+      .collection<Appointment>("patients_appointments")
       .find({})
       .sort({ created_at: -1 })
       .toArray();
 
     // Convert ObjectId to string
-    const formattedAppointments = appointments.map((apt) => ({
-      ...apt,
-      _id: apt._id.toString(),
-    }));
+    const formattedAppointments = appointments.map(
+      (apt: WithId<Appointment>) => ({
+        ...apt,
+        _id: apt._id.toString(),
+      })
+    );
 
     // Sort by priority
     const priorityOrder: Record<string, number> = {

@@ -4,12 +4,13 @@ import { connectToDatabase } from "../../../../../lib/mongodb";
 import { sendEmail } from "../../../../../lib/email";
 import { ObjectId } from "mongodb";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
+
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const { id: appointmentId } = await params;
+    const { id: appointmentId } = await context.params;
 
     // Create Google Meet link (simplified)
     const meetLink = `https://meet.google.com/${appointmentId.slice(0, 10)}`;

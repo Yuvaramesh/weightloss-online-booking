@@ -4,12 +4,13 @@ import { connectToDatabase } from "../../../../../lib/mongodb";
 import { sendEmail } from "../../../../../lib/email";
 import { ObjectId } from "mongodb";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
+
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const appointmentId = params.id;
+    const { id: appointmentId } = await context.params;
 
     // Update appointment
     const { db } = await connectToDatabase();
