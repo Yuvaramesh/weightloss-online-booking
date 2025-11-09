@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, User, Mail, FileText, LogOut } from "lucide-react";
+import { Calendar, User, Mail, FileText } from "lucide-react";
 
 interface FormData {
   patient_name: string;
@@ -35,14 +35,14 @@ export default function SimplifiedBookingForm() {
       const response = await fetch("/api/auth/user");
       const result = await response.json();
 
-      if (result.success) {
-        setUserName(result.user.name);
-        setFormData((prev) => ({
-          ...prev,
-          patient_name: result.user.name,
-          patient_email: result.user.email,
-        }));
-      }
+      // if (result.success) {
+      //   setUserName(result.user.name);
+      //   setFormData((prev) => ({
+      //     ...prev,
+      //     patient_name: result.user.name,
+      //     patient_email: result.user.email,
+      //   }));
+      // }
     } catch (error) {
       console.error("Error loading user data:", error);
     }
@@ -100,18 +100,18 @@ export default function SimplifiedBookingForm() {
     }
   };
 
-  const handleLogout = async (): Promise<void> => {
-    try {
-      const response = await fetch("/api/auth/logout", { method: "POST" });
-      const result = await response.json();
+  // const handleLogout = async (): Promise<void> => {
+  //   try {
+  //     const response = await fetch("/api/auth/logout", { method: "POST" });
+  //     const result = await response.json();
 
-      if (result.success) {
-        window.location.href = "/login";
-      }
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
+  //     if (result.success) {
+  //       window.location.href = "/login";
+  //     }
+  //   } catch (error) {
+  //     console.error("Logout error:", error);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-5 bg-gradient-to-br from-purple-600 to-purple-800">
@@ -127,13 +127,13 @@ export default function SimplifiedBookingForm() {
               <p className="text-gray-600 text-sm mt-1">Welcome, {userName}!</p>
             )}
           </div>
-          <button
+          {/* <button
             onClick={handleLogout}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 transition-all flex items-center gap-2"
           >
             <LogOut className="w-4 h-4" />
             Logout
-          </button>
+          </button> */}
         </div>
 
         <p className="text-center text-gray-600 mb-8 text-sm">
@@ -165,8 +165,12 @@ export default function SimplifiedBookingForm() {
             <input
               type="text"
               value={formData.patient_name}
-              readOnly
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-base bg-gray-50 cursor-not-allowed text-gray-800"
+              onChange={(e) =>
+                setFormData({ ...formData, patient_name: e.target.value })
+              }
+              placeholder="Enter your name"
+              required
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-base bg-white text-gray-800"
             />
           </div>
 
@@ -179,8 +183,12 @@ export default function SimplifiedBookingForm() {
             <input
               type="email"
               value={formData.patient_email}
-              readOnly
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-base bg-gray-50 cursor-not-allowed text-gray-800"
+              onChange={(e) =>
+                setFormData({ ...formData, patient_email: e.target.value })
+              }
+              placeholder="name@example.com"
+              required
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-white text-gray-800"
             />
           </div>
 
