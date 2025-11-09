@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Clock, User, Mail, FileText, LogOut } from "lucide-react";
+import { Calendar, User, Mail, FileText, LogOut } from "lucide-react";
 
-// Type definitions
 interface FormData {
   patient_name: string;
   patient_email: string;
@@ -16,34 +15,7 @@ interface Message {
   type: string;
 }
 
-interface TimeSlot {
-  time: string;
-  datetime: string;
-  display: string;
-}
-
-interface ScheduleInterval {
-  from: string;
-  to: string;
-}
-
-interface ScheduleRule {
-  type: "wday" | "date";
-  intervals: ScheduleInterval[];
-  wday?: string;
-  date?: string;
-}
-
-interface AvailabilitySchedule {
-  uri: string;
-  default: boolean;
-  name: string;
-  user: string;
-  timezone: string;
-  rules: ScheduleRule[];
-}
-
-export default function BookingFormWithSlots() {
+export default function SimplifiedBookingForm() {
   const [userName, setUserName] = useState<string>("");
   const [formData, setFormData] = useState<FormData>({
     patient_name: "",
@@ -54,19 +26,8 @@ export default function BookingFormWithSlots() {
   const [message, setMessage] = useState<Message>({ text: "", type: "" });
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Calendly availability state
-  const [availabilitySchedules, setAvailabilitySchedules] = useState<
-    AvailabilitySchedule[]
-  >([]);
-  const [selectedSchedule, setSelectedSchedule] =
-    useState<AvailabilitySchedule | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
-  const [loadingSlots, setLoadingSlots] = useState<boolean>(false);
-
   useEffect(() => {
     loadUserData();
-    fetchAvailabilitySchedules();
   }, []);
 
   const loadUserData = async (): Promise<void> => {
@@ -87,128 +48,18 @@ export default function BookingFormWithSlots() {
     }
   };
 
-  const fetchAvailabilitySchedules = async (): Promise<void> => {
-    setLoadingSlots(true);
-    try {
-      const response = await fetch("/api/availability");
-      const result = await response.json();
-
-      console.log("API Response:", result); // Debug log
-
-      if (result.success && result.data && result.data.collection) {
-        setAvailabilitySchedules(result.data.collection);
-
-        // Auto-select default schedule
-        const defaultSchedule = result.data.collection.find(
-          (s: AvailabilitySchedule) => s.default
-        );
-        if (defaultSchedule) {
-          setSelectedSchedule(defaultSchedule);
-          generateAllAvailableSlots(defaultSchedule);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching availability:", error);
+  const handleBookAppointment = async (): Promise<void> => {
+    // Validate issues field
+    if (!formData.issues.trim()) {
       setMessage({
-        text: "Failed to load availability. Please refresh the page.",
+        text: "Please describe your medical issues or symptoms",
         type: "error",
       });
-    } finally {
-      setLoadingSlots(false);
-    }
-  };
-
-  const generateAllAvailableSlots = (schedule: AvailabilitySchedule): void => {
-    const slots: TimeSlot[] = [];
-    const today = new Date();
-
-    // Generate slots for next 14 days
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-
-      const dayName = date
-        .toLocaleDateString("en-US", { weekday: "long" })
-        .toLowerCase();
-      const dateStr = date.toISOString().split("T")[0];
-
-      // Find rules for this day
-      schedule.rules.forEach((rule) => {
-        if (
-          rule.type === "wday" &&
-          rule.wday === dayName &&
-          rule.intervals.length > 0
-        ) {
-          rule.intervals.forEach((interval) => {
-            const [fromHour, fromMin] = interval.from.split(":");
-            const [toHour, toMin] = interval.to.split(":");
-
-            // Generate 30-minute slots
-            let currentHour = parseInt(fromHour);
-            let currentMin = parseInt(fromMin);
-            const endHour = parseInt(toHour);
-            const endMin = parseInt(toMin);
-
-            while (
-              currentHour < endHour ||
-              (currentHour === endHour && currentMin < endMin)
-            ) {
-              const timeStr = `${String(currentHour).padStart(2, "0")}:${String(
-                currentMin
-              ).padStart(2, "0")}`;
-              const datetime = `${dateStr}T${timeStr}`;
-
-              slots.push({
-                time: timeStr,
-                datetime: datetime,
-                display: formatDateTime(date, timeStr),
-              });
-
-              // Add 30 minutes
-              currentMin += 30;
-              if (currentMin >= 60) {
-                currentMin = 0;
-                currentHour += 1;
-              }
-            }
-          });
-        }
-      });
-    }
-
-    setAvailableSlots(slots);
-  };
-
-  const formatDateTime = (date: Date, time: string): string => {
-    const [hour, min] = time.split(":");
-    const h = parseInt(hour);
-    const ampm = h >= 12 ? "PM" : "AM";
-    const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
-
-    const dayStr = date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-
-    return `${dayStr} - ${displayHour}:${min} ${ampm}`;
-  };
-
-  const handleSlotSelect = (slot: TimeSlot): void => {
-    setSelectedSlot(slot);
-    setFormData((prev) => ({
-      ...prev,
-      preferred_time: slot.datetime,
-    }));
-  };
-
-  const handleSubmit = async (): Promise<void> => {
-    if (!formData.issues || !formData.preferred_time) {
-      setMessage({ text: "Please fill in all required fields", type: "error" });
       return;
     }
 
     setIsSubmitting(true);
+    setMessage({ text: "", type: "" });
 
     try {
       const response = await fetch("/api/book-appointments", {
@@ -221,14 +72,17 @@ export default function BookingFormWithSlots() {
 
       const result = await response.json();
 
-      if (result.success) {
-        setMessage({ text: result.message, type: "success" });
-        setFormData((prev) => ({
-          ...prev,
-          issues: "",
-          preferred_time: "",
-        }));
-        setSelectedSlot(null);
+      if (result.success && result.scheduling_url) {
+        // Show success message
+        setMessage({
+          text: "Redirecting to Calendly to complete your booking...",
+          type: "success",
+        });
+
+        // Redirect to Calendly after a brief delay
+        setTimeout(() => {
+          window.location.href = result.scheduling_url;
+        }, 1500);
       } else {
         setMessage({
           text: result.message || "An error occurred. Please try again.",
@@ -243,7 +97,6 @@ export default function BookingFormWithSlots() {
       console.error("Error:", error);
     } finally {
       setIsSubmitting(false);
-      setTimeout(() => setMessage({ text: "", type: "" }), 5000);
     }
   };
 
@@ -262,7 +115,8 @@ export default function BookingFormWithSlots() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-5 bg-gradient-to-br from-purple-600 to-purple-800">
-      <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-4xl w-full">
+      <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full">
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
@@ -283,9 +137,11 @@ export default function BookingFormWithSlots() {
         </div>
 
         <p className="text-center text-gray-600 mb-8 text-sm">
-          Book your appointment with our experienced doctors
+          Fill in your details and click "Book" to schedule your appointment
+          with Calendly
         </p>
 
+        {/* Messages */}
         {message.text && (
           <div
             className={`p-4 rounded-lg mb-5 text-sm ${
@@ -298,7 +154,9 @@ export default function BookingFormWithSlots() {
           </div>
         )}
 
+        {/* Form */}
         <div>
+          {/* Patient Name */}
           <div className="mb-6">
             <label className="block text-gray-800 font-semibold mb-2 text-sm flex items-center gap-2">
               <User className="w-4 h-4" />
@@ -312,6 +170,7 @@ export default function BookingFormWithSlots() {
             />
           </div>
 
+          {/* Patient Email */}
           <div className="mb-6">
             <label className="block text-gray-800 font-semibold mb-2 text-sm flex items-center gap-2">
               <Mail className="w-4 h-4" />
@@ -325,6 +184,7 @@ export default function BookingFormWithSlots() {
             />
           </div>
 
+          {/* Medical Issues */}
           <div className="mb-6">
             <label className="block text-gray-800 font-semibold mb-2 text-sm flex items-center gap-2">
               <FileText className="w-4 h-4" />
@@ -342,97 +202,62 @@ export default function BookingFormWithSlots() {
             />
           </div>
 
-          {/* Schedule Selection - Only show if multiple schedules */}
-          {availabilitySchedules.length > 1 && (
-            <div className="mb-6">
-              <label className="block text-gray-800 font-semibold mb-2 text-sm">
-                Select Schedule
-              </label>
-              <select
-                value={selectedSchedule?.uri || ""}
-                onChange={(e) => {
-                  const schedule = availabilitySchedules.find(
-                    (s) => s.uri === e.target.value
-                  );
-                  setSelectedSchedule(schedule || null);
-                  if (schedule) {
-                    generateAllAvailableSlots(schedule);
-                  }
-                  setSelectedSlot(null);
-                }}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:border-purple-600 focus:ring-4 focus:ring-purple-100 text-gray-800"
-              >
-                {availabilitySchedules.map((schedule) => (
-                  <option key={schedule.uri} value={schedule.uri}>
-                    {schedule.name} {schedule.default ? "(Default)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Time Slot Selection */}
-          <div className="mb-6">
-            <label className="block text-gray-800 font-semibold mb-2 text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Select Time Slot <span className="text-red-500">*</span>
-            </label>
-
-            {loadingSlots ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-gray-200">
-                <p className="text-gray-600">Loading available slots...</p>
-              </div>
-            ) : availableSlots.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-gray-200">
-                <p className="text-gray-600">No available slots found</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Please contact support
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                {availableSlots.map((slot, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => handleSlotSelect(slot)}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all border-2 text-left ${
-                      selectedSlot?.datetime === slot.datetime
-                        ? "bg-purple-600 text-white border-purple-600 shadow-lg"
-                        : "bg-white text-gray-700 border-gray-300 hover:border-purple-400 hover:bg-purple-50"
-                    }`}
-                  >
-                    {slot.display}
-                  </button>
-                ))}
-              </div>
-            )}
+          {/* Info Box */}
+          <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>📅 Next Step:</strong> After clicking "Book", you'll be
+              redirected to Calendly where you can:
+            </p>
+            <ul className="text-sm text-blue-700 mt-2 ml-4 list-disc">
+              <li>Select your preferred date and time</li>
+              <li>Confirm your booking instantly</li>
+              <li>Receive a Google Meet link via email</li>
+            </ul>
           </div>
 
-          {selectedSlot && (
-            <div className="mb-6 p-4 bg-purple-50 border-2 border-purple-200 rounded-lg">
-              <p className="text-sm text-purple-800 font-semibold">
-                Selected Appointment:
-              </p>
-              <p className="text-purple-900 mt-1">
-                {new Date(selectedSlot.datetime).toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}{" "}
-                at {selectedSlot.display.split(" - ")[1]}
-              </p>
-            </div>
-          )}
-
+          {/* Book Button */}
           <button
-            onClick={handleSubmit}
-            disabled={isSubmitting || !selectedSlot}
-            className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-lg text-base font-semibold transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
+            onClick={handleBookAppointment}
+            disabled={isSubmitting || !formData.issues.trim()}
+            className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-lg text-base font-semibold transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
           >
-            {isSubmitting ? "Submitting..." : "Book Appointment"}
+            {isSubmitting ? (
+              <>
+                <svg
+                  className="animate-spin h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Processing...
+              </>
+            ) : (
+              <>
+                <Calendar className="w-5 h-5" />
+                Book Appointment with Calendly
+              </>
+            )}
           </button>
+
+          {/* Help Text */}
+          <p className="text-center text-gray-500 text-xs mt-4">
+            You'll receive a confirmation email once you complete the booking on
+            Calendly
+          </p>
         </div>
       </div>
     </div>
