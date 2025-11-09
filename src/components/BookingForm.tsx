@@ -113,7 +113,7 @@ export default function SimplifiedBookingForm() {
   // };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-5 bg-gradient-to-br from-purple-600 to-purple-800">
+    <div className="min-h-screen flex items-center justify-center p-5 dient-to-br ">
       <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
@@ -136,8 +136,8 @@ export default function SimplifiedBookingForm() {
         </div>
 
         <p className="text-center text-gray-600 mb-8 text-sm">
-          Fill in your details and click "Book" to schedule your appointment
-          with Calendly
+          Fill your details and click "Book Appointment Button" to schedule your
+          appointment with Calendly
         </p>
 
         {/* Messages */}
