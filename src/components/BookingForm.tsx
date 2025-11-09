@@ -32,9 +32,8 @@ export default function SimplifiedBookingForm() {
 
   const loadUserData = async (): Promise<void> => {
     try {
-      const response = await fetch("/api/auth/user");
-      const result = await response.json();
-
+      // const response = await fetch("/api/auth/user");
+      // const result = await response.json();
       // if (result.success) {
       //   setUserName(result.user.name);
       //   setFormData((prev) => ({
