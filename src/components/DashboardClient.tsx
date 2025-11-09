@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Appointment {
   _id: string;
@@ -24,6 +24,8 @@ interface Stats {
 }
 
 export default function DashboardClient() {
+  const router = useRouter();
+  const [doctorName, setDoctorName] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [stats, setStats] = useState<Stats>({
     total: 0,
@@ -33,6 +35,39 @@ export default function DashboardClient() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    loadUserData();
+    loadAppointments();
+    const interval = setInterval(loadAppointments, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const response = await fetch("/api/auth/user");
+      const result = await response.json();
+
+      if (result.success) {
+        setDoctorName(result.user.name);
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      const result = await response.json();
+
+      if (result.success) {
+        router.push("/login");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   const loadAppointments = async () => {
     setLoading(true);
@@ -109,25 +144,24 @@ export default function DashboardClient() {
     }
   };
 
-  useEffect(() => {
-    loadAppointments();
-    const interval = setInterval(loadAppointments, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="min-h-screen bg-gray-100 p-5">
-      <Link
-        href="/"
-        className="inline-block mb-5 text-purple-600 font-semibold hover:underline"
-      >
-        ← Back to Booking Page
-      </Link>
+      <div className="flex justify-between items-center mb-5">
+        <div></div>
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 transition-all"
+        >
+          Logout
+        </button>
+      </div>
 
       <div className="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-8 rounded-2xl mb-8 shadow-xl">
         <h1 className="text-4xl font-bold mb-1">👨‍⚕️ Doctor Dashboard</h1>
         <p className="opacity-90">
-          Manage patient appointments and consultations
+          {doctorName
+            ? `Welcome, Dr. ${doctorName}!`
+            : "Manage patient appointments and consultations"}
         </p>
       </div>
 
@@ -201,9 +235,9 @@ export default function DashboardClient() {
           </div>
         ) : (
           <div className="space-y-5">
-            {appointments.map((apt) => (
+            {appointments.map((apt, index) => (
               <div
-                key={apt._id}
+                key={index}
                 className={`border-2 border-gray-300 rounded-xl p-5 transition-all hover:shadow-lg hover:-translate-y-0.5 ${
                   apt.priority === "High"
                     ? "border-l-8 border-l-red-500"
@@ -212,11 +246,15 @@ export default function DashboardClient() {
                     : "border-l-8 border-l-green-500"
                 }`}
               >
-                <div className="flex justify-between items-center mb-4">
-                  <div className="text-xl font-bold text-gray-800">
+                <section
+                  key={"test1"}
+                  className="flex justify-between items-center mb-4"
+                >
+                  <div key={110} className="text-xl font-bold text-gray-800">
                     {apt.patient_name}
                   </div>
-                  <span
+                  <div
+                    // key={111}
                     className={`px-4 py-1 rounded-full text-xs font-semibold uppercase ${
                       apt.priority === "High"
                         ? "bg-red-100 text-red-600"
@@ -225,11 +263,14 @@ export default function DashboardClient() {
                         : "bg-green-100 text-green-600"
                     }`}
                   >
-                    {apt.priority} Priority
-                  </span>
-                </div>
+                    {String(apt.priority)} Priority
+                  </div>
+                </section>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div
+                  key={"test2"}
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4"
+                >
                   <div className="text-gray-600">
                     <strong className="block text-gray-800 mb-1">
                       📧 Email
@@ -264,7 +305,10 @@ export default function DashboardClient() {
                   </div>
                 </div>
 
-                <div className="bg-gray-50 text-gray-900 p-4 rounded-lg mb-4">
+                <div
+                  key={"test3"}
+                  className="bg-gray-50 text-gray-900 p-4 rounded-lg mb-4"
+                >
                   <strong className="block mb-2 text-gray-800">
                     🏥 Medical Issues / Symptoms:
                   </strong>
@@ -272,7 +316,7 @@ export default function DashboardClient() {
                 </div>
 
                 {apt.google_meet_link && (
-                  <div className="mb-4 text-gray-600">
+                  <div key={"test4"} className="mb-4 text-gray-600">
                     <strong className="block text-gray-800 mb-1">
                       🎥 Google Meet Link:
                     </strong>
@@ -288,7 +332,7 @@ export default function DashboardClient() {
                 )}
 
                 {apt.status === "pending" && (
-                  <div className="flex gap-2.5 mt-4">
+                  <div key={"text5"} className="flex gap-2.5 mt-4">
                     <button
                       onClick={() => approveAppointment(apt._id)}
                       className="flex-1 py-3 bg-green-500 text-white rounded-lg font-semibold transition-all hover:bg-green-600"
